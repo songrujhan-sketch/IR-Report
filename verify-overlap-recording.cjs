@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+for(const file of ['engine','profiles','controls','picks','compact'])vm.runInThisContext(fs.readFileSync('dist/'+file+'.js','utf8'));
+for(const sub of ['RFA','Microwave ablation']){
+ const s=IR.blank(4,sub),rfa=sub==='RFA';assert.equal(IR.activeFields(s).find(f=>f.key==='anesthesia').options[0],'local anesthesia and patient-controlled intravenous analgesia');assert(!IR.activeFields(s).find(f=>f.key==='anesthesia').options.includes('intravenous sedation'));s.values.anesthesia='local anesthesia and patient-controlled intravenous analgesia';
+ const device=rfa?'cooled-tip radiofrequency electrode':'microwave antenna';s.items.ablations=[{target:'1',pattern:'overlapping ablation of the same tumor',site:'superior',device,duration:'3',...(rfa?{rfaSetup:'single electrode'}:{power:'50'})},{target:'1',pattern:'overlapping ablation of the same tumor',site:'inferior',device,duration:'7',...(rfa?{rfaSetup:'single electrode'}:{power:'100'})}];
+ let report=IR.generate(s);assert(report.includes('patient-controlled intravenous analgesia'));assert(report.includes('superior'));assert(report.includes('inferior'));assert(report.includes('3 min'));assert(report.includes('7 min'));assert(report.includes('Total ablation time: 10 min'));assert(!report.includes('cycle(s)'));if(!rfa){assert(report.includes('50 W'));assert(report.includes('100 W'));}assert(!IR.validate(s).some(x=>x.includes('次數')||x.includes('至少記錄兩個')));
+ const group=IR.activeGroups(s).find(g=>g.key==='ablations'),html=Compact.group(group,s);assert(html.includes('＋同腫瘤位置'));assert(!html.includes('f-items-ablations-0-cycles'));s.items.ablations.pop();assert(IR.validate(s).some(x=>x.includes('至少記錄兩個')));
+}
+const r=IR.blank(4,'RFA');assert.equal(r.values.procedureSteps.split('\n').length,3);for(const term of ['Images were obtained','radiofrequency electrode','Tract ablation'])assert(r.values.procedureSteps.includes(term));
+console.log('Overlap positions, independent power and duration, total time, IVPCA, and three defaults passed.');

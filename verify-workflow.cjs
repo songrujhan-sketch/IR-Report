@@ -1,0 +1,13 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+for(const file of ['engine','profiles','controls','picks'])vm.runInThisContext(fs.readFileSync('dist/'+file+'.js','utf8'));
+const s=IR.blank();s.values={accessSide:'right',access:'common femoral artery',scope:'celiac artery',anesthesia:'intravenous sedation',status:'completed',post:'The target vessel remained patent',complication:'無立即併發症'};
+s.items.catheters=[{name:'angiographic catheter',shape:'Cobra',size:'5',tip:'proper hepatic artery'},{name:'microcatheter',size:'1.98',tip:'segment 8 hepatic artery'}];
+assert.deepEqual(IR.validate(s),[]);let text=IR.generate(s);assert(text.includes('5 Fr Cobra angiographic catheter'));assert(text.includes('1.98 Fr microcatheter'));assert(text.includes('under intravenous sedation'));assert.equal(text.match(/Informed consent was obtained/g).length,1);assert.equal(text.match(/usual sterile fashion/g).length,1);
+s.values.anesthesia='general anesthesia';assert(IR.generate(s).includes('under general anesthesia'));assert(!IR.generate(s).includes('intravenous sedation'));
+for(const status of ['有立即併發症','未確認']){s.values.complication=status;s.values.complicationDetail='';assert(IR.validate(s).some(x=>x.includes('請填寫併發症')));s.values.complicationDetail='The puncture site requires further assessment';assert.deepEqual(IR.validate(s),[]);text=IR.generate(s);assert(!text.includes('No immediate complication'));assert(text.includes(status==='未確認'?'Immediate complication assessment:':'Immediate complication:'));}
+s.values.complication='無立即併發症';s.values.complicationDetail='';s.values.hemostasisConfirm='未完成止血';text=IR.generate(s);assert(text.includes('sheath was left in place for return to the ward'));assert(text.includes('infection and hematoma'));assert(text.includes('within 3 days'));assert(!text.includes('Hemostasis was not achieved'));
+s.values.hemostasisConfirm='不適用';assert(!IR.generate(s).includes('within 3 days'));
+assert(!IR.common.find(f=>f.key==='tolerance').options.includes('未確認'));assert(!IR.common.find(f=>f.key==='hemostasisConfirm').options.includes('未確認'));
+const rec=IRProfile.get(s).recommend;for(const q of ['liver function','Prophylactic antibiotics','reflux into non-target vessels'])assert(!rec.some(x=>x.includes(q)));assert(!IR.generate(s).includes('Prophylactic antibiotics'));
+s.values.status='aborted';s.values.reason='No safe route';assert(!IR.generate(s).includes('Informed consent'));
+console.log('Workflow checks passed: two independent catheter types, template defaults, GE/IVG, mandatory complication text, neutral unknown assessment, sheath follow-up and opt-in recommendations.');

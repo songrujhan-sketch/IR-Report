@@ -1,0 +1,7 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+for(const file of ['engine','profiles','controls','picks','compact'])vm.runInThisContext(fs.readFileSync('dist/'+file+'.js','utf8'));
+let s=IR.blank(1,'STENT');assert.equal(s.values.guidance,'fluoroscopy');assert.deepEqual(IR.activeFields(s).find(x=>x.key==='mode').options,['新置管']);assert.deepEqual(IR.activeFields(s).find(x=>x.key==='guidance').options,['fluoroscopy']);assert.equal(s.items.tubes[0].puncture,'existing biliary drainage catheter');s.values.mode='換管';assert(IR.validate(s).some(x=>x.includes('僅提供新置入')));
+s=IR.blank(4,'RFA');s.values.guidance='CT';s.values.fusion='Sono fusion';assert(IR.validate(s).some(x=>x.includes('純 CT')));s.values.guidance='CT and ultrasound';assert(!IR.validate(s).some(x=>x.includes('純 CT')));
+s=IR.blank(2,'Pelvis');assert(IR.modules[2].types.includes('Pelvis'));assert(IRProfile.get(s).indications[0].startsWith('Pelvic lesion'));s.values.status='completed';assert(IR.generate(s).includes('CT-guided pelvic biopsy'));
+assert(IRControls.isMulti({key:'post'},'values.post',s));assert(IRControls.isMulti({key:'tests'},'values.tests',s));const testHtml=IRControls.fields({key:'tests',label:'送檢'},'histopathology\nculture','values.tests',s);assert(testHtml.includes('histopathology')&&testHtml.includes('culture'));
+console.log('STENT placement, fluoroscopy, fusion incompatibility, pelvic biopsy and multiple specimen tests passed.');

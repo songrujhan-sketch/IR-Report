@@ -1,0 +1,7 @@
+const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
+for(const file of ['engine','profiles','controls','picks','compact'])vm.runInThisContext(fs.readFileSync('dist/'+file+'.js','utf8'));
+for(const sub of ['RFA','Microwave ablation']){
+ const s=IR.blank(4,sub);assert.equal(s.values.findings,'The target lesion was identified under image guidance');const choices=IRProfile.get(s).groups.flatMap(g=>g[1]);assert(choices.includes(s.values.findings));assert(!choices.some(x=>x.includes('adjacent to the gallbladder')||x.includes('adjacent to the diaphragm')));const g=IR.activeGroups(s).find(x=>x.key==='ablations');assert(!g.fields.some(f=>f.key==='cycles'));
+ s.indication='Hepatic tumor';s.items.ablations=[{target:'1',pattern:'single-position ablation',device:sub==='RFA'?'Cool-tip radiofrequency electrode':'13 G Emprint microwave antenna',duration:'5',...(sub==='RFA'?{rfaSetup:'single electrode'}:{power:'100'})}];const t=IR.generate(s);assert(t.includes('Clinical information: Hepatic tumor.'));assert(t.includes('Procedure / Technique:\n'));assert(t.includes('Findings:\nThe target lesion was identified under image guidance.'));assert(t.includes('Impression:\n1. '));assert(t.includes('5 min'));assert(!t.includes('cycle'));s.values.status='aborted';s.values.reason='No safe route';assert(!IR.generate(s).includes('The target lesion was identified under image guidance'));
+}
+console.log('Default finding, removed adjacent phrases, cycle-free output and CT-style headings passed.');
